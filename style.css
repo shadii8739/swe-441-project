@@ -197,8 +197,48 @@ nav { background-color: #4f46e5; }
     }
 }
 
-/* --- Dark mode placeholder (implemented in SCRUM-8) --- */
-/* body.dark-mode { } */
+/* --- Dark mode --- */
+body.dark-mode {
+    background: #0f0f1a;
+    color: #e2e8f0;
+}
+
+body.dark-mode nav { background: #312e81; }
+body.dark-mode .auth-box,
+body.dark-mode .task-form,
+body.dark-mode .task-card,
+body.dark-mode .category-card {
+    background: #1e1e2e;
+    color: #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+body.dark-mode .task-title,
+body.dark-mode .category-name { color: #e2e8f0; }
+body.dark-mode .task-desc,
+body.dark-mode .category-desc { color: #94a3b8; }
+body.dark-mode .form-group label { color: #94a3b8; }
+body.dark-mode .form-group input,
+body.dark-mode .task-form input,
+body.dark-mode .task-form textarea {
+    background: #2d2d3e;
+    color: #e2e8f0;
+    border-color: #4f46e5;
+}
+body.dark-mode .auth-box h2,
+body.dark-mode .task-form h3,
+body.dark-mode .section-title { color: #818cf8; }
+
+.dark-toggle {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+.dark-toggle:hover { background: rgba(255,255,255,0.15); }
 
 .link-btn {
     background: none;
