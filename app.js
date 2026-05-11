@@ -171,26 +171,60 @@ function renderTasks() {
 
 function renderTaskList(tasks) {
     const el = document.getElementById('task-list');
+    el.innerHTML = '';
     if (!tasks || tasks.length === 0) {
-        el.innerHTML = '<p class="empty-state">No tasks yet. Add one above!</p>';
+        const p = document.createElement('p');
+        p.className = 'empty-state';
+        p.textContent = 'No tasks yet. Add one above!';
+        el.appendChild(p);
         return;
     }
-    // Intentional: task content not escaped — XSS risk, fixed in SCRUM-5
-    el.innerHTML = tasks.map(t => `
-        <div class="task-card ${t.status === 'completed' ? 'completed' : ''}">
-            <div class="task-info">
-                <div class="task-title">${t.title}</div>
-                ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
-            </div>
-            <div class="task-actions">
-                <span class="task-status status-${t.status}">${t.status.replace('_', ' ')}</span>
-                ${t.status !== 'completed' ? `
-                    <button class="btn btn-sm btn-primary" onclick="updateStatus(${t.id}, '${t.status === 'pending' ? 'in_progress' : 'completed'}')">
-                        ${t.status === 'pending' ? 'Start' : 'Complete'}
-                    </button>` : ''}
-                <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">Delete</button>
-            </div>
-        </div>`).join('');
+    tasks.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'task-card' + (t.status === 'completed' ? ' completed' : '');
+
+        const info = document.createElement('div');
+        info.className = 'task-info';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'task-title';
+        titleEl.textContent = t.title;
+        info.appendChild(titleEl);
+
+        if (t.description) {
+            const descEl = document.createElement('div');
+            descEl.className = 'task-desc';
+            descEl.textContent = t.description;
+            info.appendChild(descEl);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+
+        const badge = document.createElement('span');
+        badge.className = `task-status status-${t.status}`;
+        badge.textContent = t.status.replace('_', ' ');
+        actions.appendChild(badge);
+
+        if (t.status !== 'completed') {
+            const nextStatus = t.status === 'pending' ? 'in_progress' : 'completed';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-primary';
+            btn.textContent = t.status === 'pending' ? 'Start' : 'Complete';
+            btn.addEventListener('click', () => updateStatus(t.id, nextStatus));
+            actions.appendChild(btn);
+        }
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-sm btn-danger';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => deleteTask(t.id));
+        actions.appendChild(delBtn);
+
+        card.appendChild(info);
+        card.appendChild(actions);
+        el.appendChild(card);
+    });
 }
 
 // Intentional: unused helper left for SCRUM-9 cleanup
