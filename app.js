@@ -47,9 +47,12 @@ async function login() {
 }
 
 async function register() {
-    const username = document.getElementById('reg-username').value;
-    const email    = document.getElementById('reg-email').value;
+    const username = document.getElementById('reg-username').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
+    if (!username) { showAlert('Username is required'); return; }
+    if (!email || !email.includes('@')) { showAlert('A valid email is required'); return; }
+    if (password.length < 6) { showAlert('Password must be at least 6 characters'); return; }
     const data = await api('api/auth.php', { action: 'register', username, email, password });
     if (data.success) {
         showAlert('Registered! Please login.', 'success');
