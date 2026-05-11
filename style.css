@@ -216,3 +216,42 @@ nav { background-color: #4f46e5; }
     padding: 3rem 0;
     font-size: 1rem;
 }
+
+/* --- Categories --- */
+.section-title {
+    margin: 1.5rem 0 1rem;
+    color: #4f46e5;
+    font-size: 1.3rem;
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.category-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.category-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79,70,229,0.15);
+}
+
+.category-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.category-name { font-weight: bold; color: #1a1a2e; margin-bottom: 0.3rem; }
+.category-desc { font-size: 0.82rem; color: #666; }
+
+.nav-btn {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+.nav-btn:hover { color: white; }
