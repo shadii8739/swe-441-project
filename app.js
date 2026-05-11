@@ -1,6 +1,3 @@
-// Task Manager — Frontend Logic
-// Note: XSS vulnerability in renderTaskList is intentional (linked to SCRUM-5/SCRUM-10)
-
 const state = { view: 'login', user: null, darkMode: false };
 
 function toggleDarkMode() {
@@ -274,11 +271,6 @@ function renderTaskList(tasks) {
         card.appendChild(actions);
         el.appendChild(card);
     });
-}
-
-// Intentional: unused helper left for SCRUM-9 cleanup
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString();
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);
