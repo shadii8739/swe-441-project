@@ -5,15 +5,48 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-if ($action === 'login') {
-    // Intentional bug: missing input validation — fixed in SCRUM-1
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+function generateCsrfToken(): string {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
 
-    $db = getDB();
-    // Intentional SQL injection vulnerability — fixed in SCRUM-5
-    $result = $db->query("SELECT * FROM users WHERE username = '$username'");
-    $user = $result ? $result->fetch_assoc() : null;
+function verifyCsrfToken(): void {
+    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
+
+if ($action === 'csrf_token') {
+    echo json_encode(['csrf_token' => generateCsrfToken()]);
+    exit;
+}
+
+$mutatingActions = ['login', 'register', 'logout'];
+if (in_array($action, $mutatingActions, true) && isset($_SESSION['csrf_token'])) {
+    verifyCsrfToken();
+}
+
+if ($action === 'login') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (empty($username) || empty($password)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Username and password are required']);
+        exit;
+    }
+
+    $db   = getDB();
+    $stmt = $db->prepare('SELECT id, username, password FROM users WHERE username = ?');
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
@@ -23,7 +56,6 @@ if ($action === 'login') {
         http_response_code(401);
         echo json_encode(['error' => 'Invalid credentials']);
     }
-    $db->close();
 
 } elseif ($action === 'register') {
     $username = trim($_POST['username'] ?? '');
