@@ -9,28 +9,38 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
+
 $user_id = $_SESSION['user_id'];
 $method  = $_SERVER['REQUEST_METHOD'];
 $action  = $_GET['action'] ?? '';
 
 if ($method === 'GET') {
-    $db     = getDB();
-    $result = $db->query("SELECT * FROM tasks WHERE user_id = $user_id ORDER BY created_at DESC");
-    $tasks  = [];
-    while ($row = $result->fetch_assoc()) {
-        $tasks[] = $row;
-    }
+    $db   = getDB();
+    $stmt = $db->prepare('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC');
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $tasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
     echo json_encode($tasks);
-    $db->close();
 
 } elseif ($method === 'POST' && $action === 'create') {
-    $title       = $_POST['title'] ?? '';
-    $description = $_POST['description'] ?? '';
+    $title       = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $db          = getDB();
-    // Intentional: no prepared statement — fixed in SCRUM-5
-    $db->query("INSERT INTO tasks (user_id, title, description) VALUES ($user_id, '$title', '$description')");
-    echo json_encode(['success' => true, 'id' => $db->insert_id]);
-    $db->close();
+    $stmt        = $db->prepare('INSERT INTO tasks (user_id, title, description) VALUES (?, ?, ?)');
+    $stmt->bind_param('iss', $user_id, $title, $description);
+    $stmt->execute();
+    $id = $db->insert_id;
+    $stmt->close();
+    echo json_encode(['success' => true, 'id' => $id]);
 
 } elseif ($method === 'POST' && $action === 'update') {
     $id     = intval($_POST['id']);
