@@ -1,7 +1,4 @@
-// Task Manager — Frontend Logic
-// Note: XSS vulnerability in renderTaskList is intentional (linked to SCRUM-5/SCRUM-10)
-
-const state = { view: 'login', user: null, darkMode: false };
+const state = { view: 'login', user: null, darkMode: false, csrfToken: null };
 
 function toggleDarkMode() {
     state.darkMode = !state.darkMode;
@@ -10,10 +7,20 @@ function toggleDarkMode() {
     if (btn) btn.textContent = state.darkMode ? '☀️ Light' : '🌙 Dark';
 }
 
+async function getCsrfToken() {
+    if (!state.csrfToken) {
+        const res = await fetch('api/auth.php?action=csrf_token');
+        const data = await res.json();
+        state.csrfToken = data.csrf_token;
+    }
+    return state.csrfToken;
+}
+
 async function api(endpoint, data = null) {
     const opts = { method: data ? 'POST' : 'GET' };
     if (data) {
-        opts.body = new URLSearchParams(data);
+        const token = await getCsrfToken();
+        opts.body = new URLSearchParams({ ...data, csrf_token: token });
     }
     const res = await fetch(endpoint, opts);
     return res.json();
@@ -274,11 +281,6 @@ function renderTaskList(tasks) {
         card.appendChild(actions);
         el.appendChild(card);
     });
-}
-
-// Intentional: unused helper left for SCRUM-9 cleanup
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString();
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);
