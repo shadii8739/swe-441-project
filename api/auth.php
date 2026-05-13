@@ -5,6 +5,32 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+function generateCsrfToken(): string {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verifyCsrfToken(): void {
+    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
+
+if ($action === 'csrf_token') {
+    echo json_encode(['csrf_token' => generateCsrfToken()]);
+    exit;
+}
+
+$mutatingActions = ['login', 'register', 'logout'];
+if (in_array($action, $mutatingActions, true) && isset($_SESSION['csrf_token'])) {
+    verifyCsrfToken();
+}
+
 if ($action === 'login') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
