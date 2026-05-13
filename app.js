@@ -1,12 +1,26 @@
-// Task Manager — Frontend Logic
-// Note: XSS vulnerability in renderTaskList is intentional (linked to SCRUM-5/SCRUM-10)
+const state = { view: 'login', user: null, darkMode: false, csrfToken: null };
 
-const state = { view: 'login', user: null };
+function toggleDarkMode() {
+    state.darkMode = !state.darkMode;
+    document.body.classList.toggle('dark-mode', state.darkMode);
+    const btn = document.getElementById('dark-toggle');
+    if (btn) btn.textContent = state.darkMode ? '☀️ Light' : '🌙 Dark';
+}
+
+async function getCsrfToken() {
+    if (!state.csrfToken) {
+        const res = await fetch('api/auth.php?action=csrf_token');
+        const data = await res.json();
+        state.csrfToken = data.csrf_token;
+    }
+    return state.csrfToken;
+}
 
 async function api(endpoint, data = null) {
     const opts = { method: data ? 'POST' : 'GET' };
     if (data) {
-        opts.body = new URLSearchParams(data);
+        const token = await getCsrfToken();
+        opts.body = new URLSearchParams({ ...data, csrf_token: token });
     }
     const res = await fetch(endpoint, opts);
     return res.json();
@@ -153,6 +167,9 @@ function renderTasks() {
             <h1>Task Manager</h1>
             <div class="nav-links">
                 <span>Hello, ${escape(state.user)}</span>
+                <button class="link-btn nav-btn" onclick="renderTasks()">My Tasks</button>
+                <button class="link-btn nav-btn" onclick="renderCategories()">Categories</button>
+                <button id="dark-toggle" class="dark-toggle" onclick="toggleDarkMode()">${state.darkMode ? '☀️ Light' : '🌙 Dark'}</button>
                 <a href="#" onclick="logout()">Logout</a>
             </div>
         </nav>
@@ -167,6 +184,45 @@ function renderTasks() {
             <div id="task-list"><p class="empty-state">Loading tasks...</p></div>
         </div>`;
     loadTasks();
+}
+
+function renderCategories() {
+    document.getElementById('app').innerHTML = `
+        <nav>
+            <h1>Task Manager</h1>
+            <div class="nav-links">
+                <span>Hello, ${escape(state.user)}</span>
+                <button class="link-btn nav-btn" onclick="renderTasks()">My Tasks</button>
+                <button class="link-btn nav-btn" onclick="renderCategories()">Categories</button>
+                <button id="dark-toggle" class="dark-toggle" onclick="toggleDarkMode()">${state.darkMode ? '☀️ Light' : '🌙 Dark'}</button>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </nav>
+        <div class="container">
+            <h2 class="section-title">Task Categories</h2>
+            <div class="category-grid">
+                <div class="category-card" onclick="renderTasks()">
+                    <div class="category-icon">📋</div>
+                    <div class="category-name">All Tasks</div>
+                    <div class="category-desc">View and manage all your tasks</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">⏳</div>
+                    <div class="category-name">Pending</div>
+                    <div class="category-desc">Tasks waiting to be started</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">🔄</div>
+                    <div class="category-name">In Progress</div>
+                    <div class="category-desc">Tasks currently being worked on</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">✅</div>
+                    <div class="category-name">Completed</div>
+                    <div class="category-desc">Finished tasks</div>
+                </div>
+            </div>
+        </div>`;
 }
 
 function renderTaskList(tasks) {
@@ -225,11 +281,6 @@ function renderTaskList(tasks) {
         card.appendChild(actions);
         el.appendChild(card);
     });
-}
-
-// Intentional: unused helper left for SCRUM-9 cleanup
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString();
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);
