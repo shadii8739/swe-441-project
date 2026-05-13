@@ -1,12 +1,26 @@
-// Task Manager — Frontend Logic
-// Note: XSS vulnerability in renderTaskList is intentional (linked to SCRUM-5/SCRUM-10)
+const state = { view: 'login', user: null, darkMode: false, csrfToken: null };
 
-const state = { view: 'login', user: null };
+function toggleDarkMode() {
+    state.darkMode = !state.darkMode;
+    document.body.classList.toggle('dark-mode', state.darkMode);
+    const btn = document.getElementById('dark-toggle');
+    if (btn) btn.textContent = state.darkMode ? '☀️ Light' : '🌙 Dark';
+}
+
+async function getCsrfToken() {
+    if (!state.csrfToken) {
+        const res = await fetch('api/auth.php?action=csrf_token');
+        const data = await res.json();
+        state.csrfToken = data.csrf_token;
+    }
+    return state.csrfToken;
+}
 
 async function api(endpoint, data = null) {
     const opts = { method: data ? 'POST' : 'GET' };
     if (data) {
-        opts.body = new URLSearchParams(data);
+        const token = await getCsrfToken();
+        opts.body = new URLSearchParams({ ...data, csrf_token: token });
     }
     const res = await fetch(endpoint, opts);
     return res.json();
@@ -33,9 +47,10 @@ async function checkSession() {
 }
 
 async function login() {
-    const username = document.getElementById('username').value;
+    const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    // Intentional bug: no client-side validation — fixed in SCRUM-1
+    if (!username) { showAlert('Username is required'); return; }
+    if (!password) { showAlert('Password is required'); return; }
     const data = await api('api/auth.php', { action: 'login', username, password });
     if (data.success) {
         state.user = data.username;
@@ -46,9 +61,12 @@ async function login() {
 }
 
 async function register() {
-    const username = document.getElementById('reg-username').value;
-    const email    = document.getElementById('reg-email').value;
+    const username = document.getElementById('reg-username').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
+    if (!username) { showAlert('Username is required'); return; }
+    if (!email || !email.includes('@')) { showAlert('A valid email is required'); return; }
+    if (password.length < 6) { showAlert('Password must be at least 6 characters'); return; }
     const data = await api('api/auth.php', { action: 'register', username, email, password });
     if (data.success) {
         showAlert('Registered! Please login.', 'success');
@@ -149,6 +167,9 @@ function renderTasks() {
             <h1>Task Manager</h1>
             <div class="nav-links">
                 <span>Hello, ${escape(state.user)}</span>
+                <button class="link-btn nav-btn" onclick="renderTasks()">My Tasks</button>
+                <button class="link-btn nav-btn" onclick="renderCategories()">Categories</button>
+                <button id="dark-toggle" class="dark-toggle" onclick="toggleDarkMode()">${state.darkMode ? '☀️ Light' : '🌙 Dark'}</button>
                 <a href="#" onclick="logout()">Logout</a>
             </div>
         </nav>
@@ -165,33 +186,101 @@ function renderTasks() {
     loadTasks();
 }
 
-function renderTaskList(tasks) {
-    const el = document.getElementById('task-list');
-    if (!tasks || tasks.length === 0) {
-        el.innerHTML = '<p class="empty-state">No tasks yet. Add one above!</p>';
-        return;
-    }
-    // Intentional: task content not escaped — XSS risk, fixed in SCRUM-5
-    el.innerHTML = tasks.map(t => `
-        <div class="task-card ${t.status === 'completed' ? 'completed' : ''}">
-            <div class="task-info">
-                <div class="task-title">${t.title}</div>
-                ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+function renderCategories() {
+    document.getElementById('app').innerHTML = `
+        <nav>
+            <h1>Task Manager</h1>
+            <div class="nav-links">
+                <span>Hello, ${escape(state.user)}</span>
+                <button class="link-btn nav-btn" onclick="renderTasks()">My Tasks</button>
+                <button class="link-btn nav-btn" onclick="renderCategories()">Categories</button>
+                <button id="dark-toggle" class="dark-toggle" onclick="toggleDarkMode()">${state.darkMode ? '☀️ Light' : '🌙 Dark'}</button>
+                <a href="#" onclick="logout()">Logout</a>
             </div>
-            <div class="task-actions">
-                <span class="task-status status-${t.status}">${t.status.replace('_', ' ')}</span>
-                ${t.status !== 'completed' ? `
-                    <button class="btn btn-sm btn-primary" onclick="updateStatus(${t.id}, '${t.status === 'pending' ? 'in_progress' : 'completed'}')">
-                        ${t.status === 'pending' ? 'Start' : 'Complete'}
-                    </button>` : ''}
-                <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">Delete</button>
+        </nav>
+        <div class="container">
+            <h2 class="section-title">Task Categories</h2>
+            <div class="category-grid">
+                <div class="category-card" onclick="renderTasks()">
+                    <div class="category-icon">📋</div>
+                    <div class="category-name">All Tasks</div>
+                    <div class="category-desc">View and manage all your tasks</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">⏳</div>
+                    <div class="category-name">Pending</div>
+                    <div class="category-desc">Tasks waiting to be started</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">🔄</div>
+                    <div class="category-name">In Progress</div>
+                    <div class="category-desc">Tasks currently being worked on</div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">✅</div>
+                    <div class="category-name">Completed</div>
+                    <div class="category-desc">Finished tasks</div>
+                </div>
             </div>
-        </div>`).join('');
+        </div>`;
 }
 
-// Intentional: unused helper left for SCRUM-9 cleanup
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString();
+function renderTaskList(tasks) {
+    const el = document.getElementById('task-list');
+    el.innerHTML = '';
+    if (!tasks || tasks.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'empty-state';
+        p.textContent = 'No tasks yet. Add one above!';
+        el.appendChild(p);
+        return;
+    }
+    tasks.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'task-card' + (t.status === 'completed' ? ' completed' : '');
+
+        const info = document.createElement('div');
+        info.className = 'task-info';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'task-title';
+        titleEl.textContent = t.title;
+        info.appendChild(titleEl);
+
+        if (t.description) {
+            const descEl = document.createElement('div');
+            descEl.className = 'task-desc';
+            descEl.textContent = t.description;
+            info.appendChild(descEl);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+
+        const badge = document.createElement('span');
+        badge.className = `task-status status-${t.status}`;
+        badge.textContent = t.status.replace('_', ' ');
+        actions.appendChild(badge);
+
+        if (t.status !== 'completed') {
+            const nextStatus = t.status === 'pending' ? 'in_progress' : 'completed';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-primary';
+            btn.textContent = t.status === 'pending' ? 'Start' : 'Complete';
+            btn.addEventListener('click', () => updateStatus(t.id, nextStatus));
+            actions.appendChild(btn);
+        }
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-sm btn-danger';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => deleteTask(t.id));
+        actions.appendChild(delBtn);
+
+        card.appendChild(info);
+        card.appendChild(actions);
+        el.appendChild(card);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);
